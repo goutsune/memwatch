@@ -71,8 +71,8 @@ void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr, 
   for (size_t i=0; i<size; i++) {
 
   // Address line
-  if (i % columns == 0 )
-    printf("\n" GOLD "%12lx" RESET "│", start_addr + i);
+  if (i % columns == 0 )                // The below keeps only 8 digits for the sake of readability.
+    printf("\n" GOLD "%08lx" RESET "│", abs(disp_addr%100000000) + i);
 
   // Reset state on slot change
   if (buf[i] != prev[i]) {
@@ -124,13 +124,13 @@ void reset_states(State **states) {
 void setup_terminal() {
   size_t lines = (size + columns - 1) / columns; // Ceil
   // Set xterm size, add extra line for header
-  printf("\033[8;%d;%dt", lines + 1, columns*3 + 13);
+  printf("\033[8;%d;%dt", lines + 1, columns*3 + 9);
   // Clear screen, disable cursor, disable wrapping, move cursor to the top-right
   printf("\033[2J\033[?25l\033[?7l\033[H");
   fflush(stdout);
 
   // Print header line
-  printf("W_SZ:%7x┌", size);
+  printf("W_SZ:%3x┌", size);
   for (int col = 0; col < columns; col++) {
     printf(" " GOLD "%02x" RESET, col);
   }
@@ -153,7 +153,7 @@ void allocate_buffers(uint8_t **buffer, uint8_t **prev, State **states) {
 void handle_resize(int sig) {
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-  columns = (w.ws_col - 13) / 3;
+  columns = (w.ws_col - 9) / 3;
   setup_terminal();
 }
 
