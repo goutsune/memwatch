@@ -208,8 +208,20 @@ int main(int argc, char *argv[]) {
     if (seq_len > 0) {
       switch (input_seq[0]) {
 
-        case 'q':  // Exit
+        case 'q': // Exit
           running = 0;
+          break;
+
+        case 'r': // Set current offset as 0
+          d_addr = 0;
+          break;
+
+        case ';': // Shift current displayed addess below
+          d_addr--;
+          break;
+
+        case '\'': // Shift current displayed addess ahead
+          d_addr++;
           break;
 
         case '[': // Remove column
