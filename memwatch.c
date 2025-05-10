@@ -216,6 +216,11 @@ int main(int argc, char *argv[]) {
           running = 0;
           break;
 
+        case ' ': // Clear diff mask
+          reset_states(&states);
+          read_memory(pid, addr, prev, size);
+          break;
+
         case 'r': // Set current offset as 0
           d_addr = 0;
           break;
