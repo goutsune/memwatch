@@ -57,9 +57,9 @@ void hex_dump(
         states[i].direction = buf[i] > prev[i] ? 1 : 0;
       }
 
-      // Not changed once, just print
+      // Not changed once, gray out zeroes
       if (states[i].untouched)
-        printf("%02x ", buf[i]);
+        buf[i] ? printf("%02x ", buf[i]) : printf(GRAY "%02x" RESET " ", buf[i]);
       else if (states[i].counter) // counter is nonzero, print bright
         states[i].direction
           ? printf(BRED  "%02x" RESET " ", buf[i])
