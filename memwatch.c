@@ -27,6 +27,11 @@ typedef struct {
 } State;
 
 volatile int running = 1;
+volatile State initial = {
+  .untouched = 1,
+  .direction = 0,
+  .counter = FADE_TIME
+};
 
 void handle_sigint(int sig) {
   running = 0;
@@ -89,6 +94,18 @@ ssize_t read_memory(pid_t pid, uintptr_t remote_addr, void *buf, size_t len) {
   return process_vm_readv(pid, &local, 1, &remote, 1, 0);
 }
 
+void allocate_buffers(size_t size, uint8_t **buffer, uint8_t **prev, State **states) {
+  *buffer = malloc(size);
+  *prev = malloc(size);
+
+  // Prepare color fade buffer
+  *states = calloc(size, sizeof(State));
+
+  for (size_t i = 0; i < size; i++) {
+    (*states)[i] = initial;
+  }
+}
+
 int main(int argc, char *argv[]) {
 
   if (argc != 4) {
@@ -107,18 +124,11 @@ int main(int argc, char *argv[]) {
 
   size_t lines = (size + COLUMNS-1) / COLUMNS;
 
-  uint8_t *buffer = malloc(size);
-  uint8_t *prev = malloc(size);
+  uint8_t *buffer = NULL;
+  uint8_t *prev = NULL;
+  State *states = NULL;
 
-  // Prepare color fade buffer
-  State *states = calloc(size, sizeof(State));
-  State def_state = {
-    .untouched = 1,
-    .direction = 0,
-    .counter = FADE_TIME};
-  for (int i=0; i<size; i++) {
-    states[i] = def_state;
-  }
+  allocate_buffers(size, &buffer, &prev, &states);
 
   // Move cursor to the top-right,  clear screen, disable cursor
   printf("\033[H\033[2J\033[?25l");
