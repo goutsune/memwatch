@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
@@ -31,6 +32,8 @@ typedef struct {
 
 volatile int running = 1;
 volatile int columns = 16;
+volatile size_t size = 0;
+
 volatile State initial = {
   .untouched = 1,
   .direction = 0,
@@ -62,10 +65,10 @@ void restore_input_mode() {
 }
 
 
-void hex_dump(uint8_t *buf, uint8_t *prev, State *states, size_t len, uintptr_t start_addr) {
+void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr) {
 
   // Count rows in actual offset from memory to simplify math
-  for (size_t row=0; row<len; row+=columns) {
+  for (size_t row=0; row<size; row+=columns) {
 
     // Address line
     printf("\n" GOLD "%12lx" RESET "│", start_addr + row);
@@ -73,7 +76,7 @@ void hex_dump(uint8_t *buf, uint8_t *prev, State *states, size_t len, uintptr_t 
     for (int column = 0; column < columns; column++) {
       size_t i = row + column;
 
-      if (i >= len) break;  // break early when we overflow
+      if (i >= size) break;  // break early when we overflow
 
       // Reset state on slot change
       if (buf[i] != prev[i]) {
@@ -102,20 +105,20 @@ void hex_dump(uint8_t *buf, uint8_t *prev, State *states, size_t len, uintptr_t 
 }
 
 
-ssize_t read_memory(pid_t pid, uintptr_t remote_addr, void *buf, size_t len) {
+ssize_t read_memory(pid_t pid, uintptr_t remote_addr, void *buf, size_t size) {
 
   struct iovec local  = {
     .iov_base = buf,
-    .iov_len = len };
+    .iov_len = size };
   struct iovec remote = {
     .iov_base = (void *)remote_addr,
-    .iov_len = len };
+    .iov_len = size };
 
   return process_vm_readv(pid, &local, 1, &remote, 1, 0);
 }
 
 
-void reset_states(State **states, size_t size) {
+void reset_states(State **states) {
   // Prepare color fade buffer
   *states = calloc(size, sizeof(State));
 
@@ -124,7 +127,7 @@ void reset_states(State **states, size_t size) {
   }
 }
 
-void setup_terminal(size_t size) {
+void setup_terminal() {
   size_t lines = (size + columns - 1) / columns; // Ceil
   // Set xterm size, add extra line for header
   printf("\033[8;%d;%dt", lines + 1, columns*3 + 13);
@@ -140,7 +143,7 @@ void setup_terminal(size_t size) {
 }
 
 
-void allocate_buffers(size_t size, uint8_t **buffer, uint8_t **prev, State **states) {
+void allocate_buffers(uint8_t **buffer, uint8_t **prev, State **states) {
 
   if (*buffer != NULL) free(*buffer);
   if (*prev   != NULL) free(*prev);
@@ -149,7 +152,15 @@ void allocate_buffers(size_t size, uint8_t **buffer, uint8_t **prev, State **sta
   *buffer = calloc(size, 1);
   *prev = calloc(size, 1);
 
-  reset_states(states, size);
+  reset_states(states);
+}
+
+
+void handle_resize(int sig) {
+  struct winsize w;
+  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+  columns = (w.ws_col - 13) / 3;
+  setup_terminal();
 }
 
 
@@ -164,16 +175,17 @@ int main(int argc, char *argv[]) {
   }
 
   signal(SIGINT, handle_sigint);
+  // signal(SIGWINCH, handle_resize);  // Does not seem to play nice when resize events pile up
 
   pid_t pid = atoi(argv[1]);
   uintptr_t addr = strtoul(argv[2], NULL, 16);
-  size_t size = strtoul(argv[3], NULL, 0);
+  size = strtoul(argv[3], NULL, 0);
 
   uint8_t *buffer = NULL;
   uint8_t *prev = NULL;
   State *states = NULL;
 
-  allocate_buffers(size, &buffer, &prev, &states);
+  allocate_buffers(&buffer, &prev, &states);
 
   // Prepare old buffer
   if (read_memory(pid, addr, prev, size) < 0) {
@@ -182,7 +194,7 @@ int main(int argc, char *argv[]) {
   }
 
   set_nonblocking_input();
-  setup_terminal(size);
+  setup_terminal();
 
   // Input sequence buffer for up to 3 bytes to handle arrows
   char input_seq[4] = {0};
@@ -197,27 +209,31 @@ int main(int argc, char *argv[]) {
     if (seq_len > 0) {
       switch (input_seq[0]) {
 
+        case 'q':  // Exit
+          running = 0;
+          break;
+
         case '[': // Remove column
           if (columns > 2) columns--;
-          setup_terminal(size);
+          setup_terminal();
           break;
 
         case ']': // Add column
           columns++;
-          setup_terminal(size);
+          setup_terminal();
           break;
 
         case ',': // Shrink buffer
           if (size > 2) size--;
-          allocate_buffers(size, &buffer, &prev, &states);
+          allocate_buffers(&buffer, &prev, &states);
           read_memory(pid, addr, prev, size);
           setup_terminal(size);
           break;
         case '.': // Grow buffer
           size++;
-          allocate_buffers(size, &buffer, &prev, &states);
+          allocate_buffers(&buffer, &prev, &states);
           read_memory(pid, addr, prev, size);
-          setup_terminal(size);
+          setup_terminal();
           break;
 
         case '\033': // ESC
@@ -240,7 +256,7 @@ int main(int argc, char *argv[]) {
               break;
           }
           // Reset colors on any esc input stroke for the sake of simplicity
-          reset_states(&states, size);
+          reset_states(&states);
           read_memory(pid, addr, prev, size);
           break;
       }
@@ -254,7 +270,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("\033[1;0H"); // Move to line 2, so that header remains
-    hex_dump(buffer, prev, states, size, addr);
+    hex_dump(buffer, prev, states, addr);
     memcpy(prev, buffer, size);
     fflush(stdout);
 
