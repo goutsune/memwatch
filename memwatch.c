@@ -246,6 +246,18 @@ int main(int argc, char *argv[]) {
           read_memory(pid, addr, prev, size);
           setup_terminal();
           break;
+        case '<': // Shrink buffer by row
+          if (size > columns+1) size -= columns;
+          allocate_buffers(&buffer, &prev, &states);
+          read_memory(pid, addr, prev, size);
+          setup_terminal(size);
+          break;
+        case '>': // Grow buffer by row
+          size += columns;
+          allocate_buffers(&buffer, &prev, &states);
+          read_memory(pid, addr, prev, size);
+          setup_terminal();
+          break;
 
         case '\033': // ESC
           switch (input_seq[2]) {
