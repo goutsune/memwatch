@@ -65,7 +65,7 @@ void restore_input_mode() {
 }
 
 
-void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr) {
+void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr, long int disp_addr) {
 
   // Count rows in actual offset from memory to simplify math
   for (size_t i=0; i<size; i++) {
@@ -160,9 +160,9 @@ void handle_resize(int sig) {
 
 int main(int argc, char *argv[]) {
 
-  if (argc != 4) {
+  if (argc < 4) {
     printf(
-      "Usage: %s <pid> <hex_address> <size>\n",
+      "Usage: %s <pid> <hex_address> <size> [display_addr]\n",
       argv[0]);
 
     return 1;
@@ -174,6 +174,11 @@ int main(int argc, char *argv[]) {
   pid_t pid = atoi(argv[1]);
   uintptr_t addr = strtoul(argv[2], NULL, 16);
   size = strtoul(argv[3], NULL, 0);
+  long int d_addr;
+  if (argc == 5)
+    d_addr = strtol(argv[4], NULL, 16);
+  else
+    d_addr = (long int)addr;
 
   uint8_t *buffer = NULL;
   uint8_t *prev = NULL;
@@ -234,20 +239,27 @@ int main(int argc, char *argv[]) {
           switch (input_seq[2]) {
 
             case 'A':  // Up
+              if (d_addr < columns) break;  // Forbid negatives
               addr -= columns;
+              d_addr -= columns;
               break;
 
             case 'B': // Down
               addr += columns;
+              d_addr += columns;
               break;
 
             case 'C': // Right
               addr++;
+              d_addr++;
               break;
 
             case 'D': // Left
+              if (!d_addr) break;
               addr--;
+              d_addr--;
               break;
+
           }
           // Reset colors on any esc input stroke for the sake of simplicity
           reset_states(&states);
@@ -264,7 +276,9 @@ int main(int argc, char *argv[]) {
     }
 
     printf("\033[1;0H"); // Move to line 2, so that header remains
-    hex_dump(buffer, prev, states, addr);
+
+    // DO BARREL ROLL
+    hex_dump(buffer, prev, states, addr, d_addr);
     memcpy(prev, buffer, size);
     fflush(stdout);
 
