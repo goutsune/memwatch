@@ -129,7 +129,7 @@ void setup_terminal() {
   size_t lines = (size + columns - 1) / columns; // Ceil
   // Set xterm size, add extra line for header
   printf("\033[8;%d;%dt", lines + 1, columns*3 + 9);
-  // Clear screen, disable cursor, disable wrapping, move cursor to the top-right
+  // Clear screen, disable cursor, disable wrapping, move cursor to the top-left
   printf("\033[2J\033[?25l\033[?7l\033[H");
   fflush(stdout);
 
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
           if (size > 2) size--;
           allocate_buffers(&buffer, &prev, &states);
           read_memory(pid, addr, prev, size);
-          setup_terminal(size);
+          setup_terminal();
           break;
         case '.': // Grow buffer
           size++;
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
           if (size > columns+1) size -= columns;
           allocate_buffers(&buffer, &prev, &states);
           read_memory(pid, addr, prev, size);
-          setup_terminal(size);
+          setup_terminal();
           break;
         case '>': // Grow buffer by row
           size += columns;
@@ -325,7 +325,6 @@ int main(int argc, char *argv[]) {
     // DO BARREL ROLL
     hex_dump(buffer, prev, states, addr, d_addr);
     memcpy(prev, buffer, size);
-    fflush(stdout);
 
     usleep(DELAY);
   }
