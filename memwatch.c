@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
   setup_terminal();
 
   // Input sequence buffer for up to 3 bytes to handle arrows
-  char input_seq[4] = {0};
+  char input_seq[6] = {0};
   ssize_t seq_len = 0;
 
   while (running) {
@@ -270,6 +270,23 @@ int main(int argc, char *argv[]) {
               if (!d_addr) break;
               addr--;
               d_addr--;
+              break;
+
+            case '1': // Home
+            case 'H': // Home
+              addr -= d_addr;
+              d_addr = 0;
+              break;
+
+            case '5': // PgUp
+              if (d_addr < size) break;
+              addr -= size;
+              d_addr -= size;
+              break;
+
+            case '6': // PgDn
+              addr += size;
+              d_addr += size;
               break;
 
           }
