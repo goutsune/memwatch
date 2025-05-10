@@ -176,11 +176,11 @@ int main(int argc, char *argv[]) {
   // signal(SIGWINCH, handle_resize);  // Does not seem to play nice when resize events pile up
 
   pid_t pid = atoi(argv[1]);
-  uintptr_t addr = strtoul(argv[2], NULL, 16);
+  uintptr_t addr = strtoul(argv[2], NULL, 0);
   size = strtoul(argv[3], NULL, 0);
   long int d_addr;
-  if (argc == 5)
-    d_addr = strtol(argv[4], NULL, 16);
+  if (argc >= 5)
+    d_addr = strtol(argv[4], NULL, 0);
   else
     d_addr = (long int)addr;
 
