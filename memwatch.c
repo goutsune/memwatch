@@ -68,39 +68,33 @@ void restore_input_mode() {
 void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr) {
 
   // Count rows in actual offset from memory to simplify math
-  for (size_t row=0; row<size; row+=columns) {
+  for (size_t i=0; i<size; i++) {
 
-    // Address line
-    printf("\n" GOLD "%12lx" RESET "│", start_addr + row);
+  // Address line
+  if (i % columns == 0 )
+    printf("\n" GOLD "%12lx" RESET "│", start_addr + i);
 
-    for (int column = 0; column < columns; column++) {
-      size_t i = row + column;
+  // Reset state on slot change
+  if (buf[i] != prev[i]) {
+    states[i].untouched = 0;
+    states[i].counter = FADE_TIME;
+    states[i].direction = buf[i] > prev[i] ? 1 : 0;
+  }
 
-      if (i >= size) break;  // break early when we overflow
+  // Not changed once, gray out zeroes
+  if (states[i].untouched)
+    buf[i] ? printf(" %02x", buf[i]) : printf(" " GRAY "%02x" RESET, buf[i]);
+  else if (states[i].counter) // counter is nonzero, print bright
+    states[i].direction
+      ? printf(" " BRED  "%02x" RESET, buf[i])
+      : printf(" " BBLUE "%02x" RESET, buf[i]);
+  else
+    states[i].direction
+      ? printf(" " RED  "%02x" RESET, buf[i])
+      : printf(" " BLUE "%02x" RESET, buf[i]);
 
-      // Reset state on slot change
-      if (buf[i] != prev[i]) {
-        states[i].untouched = 0;
-        states[i].counter = FADE_TIME;
-        states[i].direction = buf[i] > prev[i] ? 1 : 0;
-      }
-
-      // Not changed once, gray out zeroes
-      if (states[i].untouched)
-        buf[i] ? printf(" %02x", buf[i]) : printf(" " GRAY "%02x" RESET, buf[i]);
-      else if (states[i].counter) // counter is nonzero, print bright
-        states[i].direction
-          ? printf(" " BRED  "%02x" RESET, buf[i])
-          : printf(" " BBLUE "%02x" RESET, buf[i]);
-      else
-        states[i].direction
-          ? printf(" " RED  "%02x" RESET, buf[i])
-          : printf(" " BLUE "%02x" RESET, buf[i]);
-
-      if (!states[i].untouched && states[i].counter)
-        states[i].counter--;
-    }
-
+  if (!states[i].untouched && states[i].counter)
+    states[i].counter--;
   }
 }
 
