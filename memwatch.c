@@ -65,37 +65,41 @@ void restore_input_mode() {
 }
 
 
-void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr, long int disp_addr) {
+void hex_dump(uint8_t *buf, uint8_t *prev, State *states, uintptr_t start_addr, uintptr_t disp_addr) {
 
   // Count rows in actual offset from memory to simplify math
   for (size_t i=0; i<size; i++) {
 
-  // Address line
-  if (i % columns == 0 )                // The below keeps only 8 digits for the sake of readability.
-    printf("\n" GOLD "%08lx" RESET "│", abs(disp_addr%100000000) + i);
+    // Address line
+    if (i % columns == 0 )                   // The below keeps only 8 digits for the sake of readability.
+      printf("\n" GOLD "%08lx" RESET "│", disp_addr%0x100000000 + i);
 
-  // Reset state on slot change
-  if (buf[i] != prev[i]) {
-    states[i].untouched = 0;
-    states[i].counter = FADE_TIME;
-    states[i].direction = buf[i] > prev[i] ? 1 : 0;
+    // Reset state on slot change
+    if (buf[i] != prev[i]) {
+      states[i].untouched = 0;
+      states[i].counter = FADE_TIME;
+      states[i].direction = buf[i] > prev[i] ? 1 : 0;
+    }
+
+    // Not changed once, gray out zeroes
+
+    if (states[i].untouched)
+      buf[i] ? printf(" %02x", buf[i]) : printf(" " GRAY "%02x" RESET, buf[i]);
+    else {
+      if (states[i].counter) // counter is nonzero, print bright
+        states[i].direction
+          ? printf(" " BRED  "%02x" RESET, buf[i])
+          : printf(" " BBLUE "%02x" RESET, buf[i]);
+      else
+        states[i].direction
+          ? printf(" " RED  "%02x" RESET, buf[i])
+          : printf(" " BLUE "%02x" RESET, buf[i]);
+    }
+
+    if (!states[i].untouched && states[i].counter)
+      states[i].counter--;
   }
-
-  // Not changed once, gray out zeroes
-  if (states[i].untouched)
-    buf[i] ? printf(" %02x", buf[i]) : printf(" " GRAY "%02x" RESET, buf[i]);
-  else if (states[i].counter) // counter is nonzero, print bright
-    states[i].direction
-      ? printf(" " BRED  "%02x" RESET, buf[i])
-      : printf(" " BBLUE "%02x" RESET, buf[i]);
-  else
-    states[i].direction
-      ? printf(" " RED  "%02x" RESET, buf[i])
-      : printf(" " BLUE "%02x" RESET, buf[i]);
-
-  if (!states[i].untouched && states[i].counter)
-    states[i].counter--;
-  }
+  fflush(stdout);
 }
 
 
