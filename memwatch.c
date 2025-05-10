@@ -73,7 +73,7 @@ void hex_dump(uint8_t *buf, uint8_t *prev, State *states, size_t len, uintptr_t 
     for (int column = 0; column < columns; column++) {
       size_t i = row + column;
 
-      if (i > len) break;  // break early when we overflow
+      if (i >= len) break;  // break early when we overflow
 
       // Reset state on slot change
       if (buf[i] != prev[i]) {
