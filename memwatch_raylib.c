@@ -20,7 +20,7 @@ Color _GOLD  = { 0xc4, 0xa0, 0x00, 0xff };
 
 #define FADE_TIME 0x30
 #define SPACING 4
-#define MYCHARS "0123456789+- _/.,:@#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ┌│"
+#define MYCHARS "0123456789+- _/.,:@#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ│·"
 
 struct Counter {
   unsigned int untouched : 1;
@@ -139,11 +139,11 @@ void DrawHeader() {
   // Buffer size
   char header[16];
   if (G.size < 0x1000)
-    snprintf(header, sizeof(header), "W_SZ:%3lX┌", G.size);
+    snprintf(header, sizeof(header), "W_SZ:%3lX·", G.size);
   else if (G.size < 0x10000)
-    snprintf(header, sizeof(header), "WSZ:%4lX┌",  G.size);
+    snprintf(header, sizeof(header), "WSZ:%4lX·",  G.size);
   else
-    snprintf(header, sizeof(header), "%08lX┌",      G.size);
+    snprintf(header, sizeof(header), "%08lX·",      G.size);
 
   DrawTextEx(G.font, header, pos, G.font.baseSize, 0, _FG);
 
