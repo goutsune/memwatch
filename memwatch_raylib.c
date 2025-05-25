@@ -12,27 +12,36 @@
 Color _FG    = { 0xd3, 0xd7, 0xcf, 0xff };
 Color _BG    = { 0x00, 0x00, 0x00, 0xff };
 Color _GRAY  = { 0x55, 0x57, 0x53, 0xff };
+Color _GOLD  = { 0xc4, 0xa0, 0x00, 0xff };
 Color _RED   = { 0xa0, 0x00, 0x00, 0xff };
 Color _BRED  = { 0xef, 0x29, 0x29, 0xff };
 Color _BLUE  = { 0x34, 0x65, 0xa4, 0xff };
 Color _BBLUE = { 0x72, 0x9f, 0xcf, 0xff };
-Color _GOLD  = { 0xc4, 0xa0, 0x00, 0xff };
+Color _BMAGN = { 0xad, 0x7f, 0xa8, 0xff };
+Color _MAGN  = { 0x75, 0x50, 0x7b, 0xff };
+Color _BCYAN = { 0x34, 0xe2, 0xe2, 0xff };
+Color _CYAN  = { 0x06, 0x98, 0x9a, 0xff };
 
 #define FADE_TIME 0x30
 #define SPACING 4
 #define MYCHARS "0123456789+- _/.,:@#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ│·"
 
+// States for bytes, INCR/DECR for 1 byte step, INCS/DECS for mode
+enum {INCR, INCS, DECR, DECS};
+
+
 struct Counter {
   unsigned int untouched : 1;
-  unsigned int direction : 1;  // set when increased, unset when decreased
   unsigned int counter : 6;
+  uint8_t direction;
 };
 
 
 volatile struct Counter INIT_COUNT = {
   .untouched = 1,
-  .direction = 0,
+  .direction = DECR,
   .counter = FADE_TIME,
+  .r_counter = REST_TIME,
 };
 
 
@@ -193,10 +202,16 @@ void DrawHex() {
     if (G.counters[i].untouched)  // Not changed once, print with FG or GRAY
       color = G.buffer[i] ?  _FG : _GRAY;
     else {
-      if (G.counters[i].counter)  // Counter is nonzero, print bright
-        color = G.counters[i].direction ? _BRED : _BBLUE;
-      else                        // Counter is zero, print usual
-        color = G.counters[i].direction ? _RED : _BLUE;
+      switch (G.counters[i].direction) {
+        case INCR:
+          color = G.counters[i].counter ? _BMAGN : _MAGN; break;
+        case INCS:
+          color = G.counters[i].counter ? _BRED  : _RED;  break;
+        case DECR:
+          color = G.counters[i].counter ? _BCYAN : _CYAN; break;
+        case DECS:
+          color = G.counters[i].counter ? _BBLUE : _BLUE; break;
+      }
     }
 
     DrawTextEx(G.font, byte, pos, G.font.baseSize, 0, color);
@@ -213,8 +228,11 @@ void RefreshCounters() {
 
     if (G.buffer[i] != G.prev[i]) {
       G.counters[i].untouched = 0;
+      G.counters[i].direction =
+        G.buffer[i] > G.prev[i]
+          ? (G.buffer[i] - G.prev[i] == 1) ? INCR : INCS
+          : (G.prev[i] - G.buffer[i] == 1) ? DECR : DECS;
       G.counters[i].counter = FADE_TIME;
-      G.counters[i].direction = G.buffer[i] > G.prev[i] ? 1 : 0;
     }
   }
 }
