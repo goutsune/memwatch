@@ -228,8 +228,9 @@ void HandleInput() {
   if (repeat_counter % 2) return;
 
   bool any_key_down = false;
-  for (int k = 32; k <= 348; k++) {
-    if (IsKeyDown(k)) {
+  int key;
+  for (key = 32; key <= 348; key++) {
+    if (IsKeyDown(key)) {
       any_key_down = true;
       break;
     }
@@ -243,122 +244,122 @@ void HandleInput() {
 
   if (delay_counter != 1 && delay_counter < 12) return;
 
-  if (IsKeyDown(KEY_Q)) {
-    G.running = 0;
-  }
+  switch (key) {
 
-  if (IsKeyDown(KEY_SPACE)) {
+  case KEY_Q: // Exit
+    G.running = 0;
+    break;
+
+  case KEY_SPACE: // Clear diff mask
     ResetStates();
     UpdateBuffers();
-  }
+    break;
 
-  if (IsKeyDown(KEY_R)) {
+  case KEY_R: // Set current offset as 0
     G.d_addr = 0;
-  }
+    break;
 
-  if (IsKeyDown(KEY_SEMICOLON)) {
+  case KEY_SEMICOLON: // Shift current displayed addess below
     G.d_addr--;
-  }
+    break;
 
-  if (IsKeyDown(KEY_APOSTROPHE)) {
+  case KEY_APOSTROPHE: // Shift current displayed addess ahead
     G.d_addr++;
-  }
+    break;
 
-  if (IsKeyDown(KEY_LEFT_BRACKET)) {
+  case KEY_LEFT_BRACKET: // Remove column
     if (G.columns > 2) G.columns--;
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_RIGHT_BRACKET)) {
+  case KEY_RIGHT_BRACKET: // Add column
     G.columns++;
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_COMMA)) {
+  case KEY_COMMA: // Shrink buffer
     if (G.size > 2) G.size--;
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_PERIOD)) {
+  case KEY_PERIOD: // Grow buffer
     G.size++;
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_MINUS)) {
-    if (G.size > G.columns + 1) G.size -= G.columns;
+  case KEY_MINUS: // Shrink buffer by row
+    if (G.size > G.columns+1) G.size -= G.columns;
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_EQUAL)) {
+  case KEY_EQUAL: // Grow buffer by row
     G.size += G.columns;
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
     G.layout_changed = 1;
-  }
+    break;
 
-  if (IsKeyDown(KEY_UP)) {
-    if (G.d_addr >= G.columns) {
-      G.addr -= G.columns;
-      G.d_addr -= G.columns;
-      ResetStates();
-      UpdateBuffers();
-    }
-  }
+  case KEY_UP:
+    if (G.d_addr < G.columns) break;  // Forbid negatives
+    G.addr -= G.columns;
+    G.d_addr -= G.columns;
+    ResetStates();
+    UpdateBuffers();
+    break;
 
-  if (IsKeyDown(KEY_DOWN)) {
+  case KEY_DOWN:
     G.addr += G.columns;
     G.d_addr += G.columns;
     ResetStates();
     UpdateBuffers();
-  }
+    break;
 
-  if (IsKeyDown(KEY_RIGHT)) {
+  case KEY_RIGHT:
     G.addr++;
     G.d_addr++;
     ResetStates();
     UpdateBuffers();
-  }
+    break;
 
-  if (IsKeyDown(KEY_LEFT)) {
-    if (G.d_addr) {
-      G.addr--;
-      G.d_addr--;
-      ResetStates();
-      UpdateBuffers();
-    }
-  }
+  case KEY_LEFT:
+    if (!G.d_addr) break;
+    G.addr--;
+    G.d_addr--;
+    ResetStates();
+    UpdateBuffers();
+    break;
 
-  if (IsKeyDown(KEY_HOME)) {
+  case KEY_HOME:
     G.addr -= G.d_addr;
     G.d_addr = 0;
     ResetStates();
     UpdateBuffers();
-  }
+    break;
 
-  if (IsKeyDown(KEY_PAGE_UP)) {
-    if (G.d_addr >= G.size) {
-      G.addr -= G.size;
-      G.d_addr -= G.size;
+  case KEY_PAGE_UP:
+    if (G.d_addr < G.size) break;
+    G.addr -= G.size;
+    G.d_addr -= G.size;
     ResetStates();
     UpdateBuffers();
-    }
-  }
+    break;
 
-  if (IsKeyDown(KEY_PAGE_DOWN)) {
+  case KEY_PAGE_DOWN:
     G.addr += G.size;
     G.d_addr += G.size;
     ResetStates();
     UpdateBuffers();
+    break;
   }
 }
 
