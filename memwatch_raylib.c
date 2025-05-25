@@ -302,11 +302,11 @@ void HandleInput() {
     G.d_addr = 0;
     break;
 
-  case KEY_SEMICOLON: // Shift current displayed addess below
-    G.d_addr--;
+  case KEY_MINUS: // Shift current displayed addess below
+    if (G.d_addr) G.d_addr--;
     break;
 
-  case KEY_APOSTROPHE: // Shift current displayed addess ahead
+  case KEY_EQUAL: // Shift current displayed addess ahead
     G.d_addr++;
     break;
 
@@ -336,7 +336,7 @@ void HandleInput() {
     G.layout_changed = true;
     break;
 
-  case KEY_MINUS: // Shrink buffer by row
+  case KEY_L: // Shrink buffer by row
     if (G.size > G.columns+1) G.size -= G.columns;
     AllocateBuffers();
     ReadMemory(G.buffer);
@@ -344,7 +344,7 @@ void HandleInput() {
     G.layout_changed = true;
     break;
 
-  case KEY_EQUAL: // Grow buffer by row
+  case KEY_SEMICOLON: // Grow buffer by row
     G.size += G.columns;
     AllocateBuffers();
     ReadMemory(G.buffer);
