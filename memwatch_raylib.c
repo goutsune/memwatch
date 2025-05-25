@@ -58,6 +58,7 @@ volatile struct {
   bool layout_changed;
   bool running;
   bool keep_bytes;
+  bool short_addr;
   Font font;
 
   // Font metrics
@@ -76,6 +77,7 @@ volatile struct {
 } G = {
     .running = true,
     .keep_bytes = false,
+    .short_addr = false,
     .columns = 16,
     .size = 0x100,
     .buffer   = NULL,
@@ -124,7 +126,7 @@ void AllocateBuffers() {
 
 
 void PrintUsage(const char *progname) {
-    printf("Usage: %s [-f <font.ttf>] [-l <font_size>] -p <PID> -a <addr> [-d <disp_addr>] [-k]\n", progname);
+    printf("Usage: %s [-f <font.ttf>] [-l <font_size>] -p <PID> -a <addr> [-d <disp_addr>] [-kt]\n", progname);
     puts("  -f <font_file>   Path to font file (defaults to ./font.ttf)");
     puts("  -l <font_size>   Font size in pixels (default: 8)");
     puts("  -p <PID>         PID to read from");
@@ -132,14 +134,17 @@ void PrintUsage(const char *progname) {
     puts("  -a <addr>        Memory location (hex or dec)");
     puts("  -d <d_addr>      Displayed address (hex or dec)");
     puts("  -k               Don't reset colored bytes");
+    puts("  -t               Limit address line to 16 bits");
 }
 
 
 void SetupWindow() {
   G.rows = (G.size + G.columns-1) / G.columns;  // Ceil
-  // 8 chars for address + separator + columns*2 for each byte...
+  // 8/4 chars for address + separator + columns*2 for each byte...
   // + 2 character space + columns*2px for spacing, but no spacing for last char
-  G.width  = G.chr_w * (G.columns*2 + 8 + 1) + G.columns*SPACING;
+  G.width = G.short_addr ?
+    (G.chr_w * (G.columns*2 + 4 + 1) + G.columns*SPACING):
+    (G.chr_w * (G.columns*2 + 8 + 1) + G.columns*SPACING);
   G.height = G.chr_h * (G.rows + 1); // +1 for header
 
   SetWindowSize(G.width, G.height);
@@ -152,18 +157,24 @@ void DrawHeader() {
 
   // Buffer size
   char header[16];
-  if (G.size < 0x1000)
-    snprintf(header, sizeof(header), "W_SZ:%3lX·", G.size);
-  else if (G.size < 0x10000)
-    snprintf(header, sizeof(header), "WSZ:%4lX·",  G.size);
-  else
-    snprintf(header, sizeof(header), "%08lX·",      G.size);
+  char *fmt;
+  if (G.short_addr) {
+    if (G.size < 0x100)        fmt = "S:%2lX·";
+    else if (G.size < 0x1000)  fmt = ":%3lX·";
+    else                       fmt = "%4lX·";
+  } else {
+    if (G.size < 0x1000)        fmt = "W_SZ:%3lX·";
+    else if (G.size < 0x10000)  fmt = "WSZ:%4lX·";
+    else                        fmt = "%08lX·";
+  }
 
+  snprintf(header, sizeof(header), fmt, G.size);
   DrawTextEx(G.font, header, pos, G.font.baseSize, 0, _FG);
 
   // Hex offsets
   char hex[4];
-  pos.x = G.chr_w * 9;
+
+  pos.x = G.short_addr ? G.chr_w * 5 : G.chr_w * 9;
   for (uint col = 0; col < G.columns; col++) {
     sprintf(hex, "%02X", col);
     DrawTextEx(G.font, hex, pos, G.font.baseSize, 0, _GOLD);
@@ -177,12 +188,14 @@ void DrawAddr() {
   Vector2 pos = {.x = 0, .y = G.chr_h};
 
   char addr[16];
+  char *fmt;
   for (size_t row = 0; row < G.rows; row++) {
     size_t offset = G.d_addr + (row * G.columns);
-    snprintf(addr, sizeof(addr), "%08lX", offset);
+    fmt = G.short_addr ? "%04lX" : "%08lX";
+    snprintf(addr, sizeof(addr), fmt, offset);
     DrawTextEx(G.font, addr, pos, G.font.baseSize, 0, _GOLD);
 
-    pos.x += G.chr_w * 8;
+    pos.x += G.short_addr ? G.chr_w * 4 : G.chr_w * 8;
     DrawTextEx(G.font, "│", pos, G.font.baseSize, 0, _FG);
 
     pos.x = 0;
@@ -199,7 +212,7 @@ void DrawHex() {
   Color color;
   for (size_t i = 0; i < G.size; i++) {
     if (i % G.columns == 0) {
-      pos.x = G.chr_w * 9;
+      pos.x = G.short_addr ? G.chr_w * 5 : G.chr_w * 9;
       pos.y += G.chr_h;
     }
     sprintf(byte, "%02X", G.buffer[i]);
@@ -402,7 +415,7 @@ int main(int argc, char *argv[]) {
   bool d_addr_set = false;  // Guard to safely detext 0x00 as explicitly set d_addr
   char opt;
 
-  while ((opt = getopt(argc, argv, "f:l:p:s:a:d:k")) != -1) {
+  while ((opt = getopt(argc, argv, "f:l:p:s:a:d:kt")) != -1) {
     switch (opt) {
       case 'f': font_file = optarg; break;
       case 'l': font_size = atoi(optarg); break;
@@ -414,6 +427,7 @@ int main(int argc, char *argv[]) {
         d_addr_set = true;
         break;
       case 'k': G.keep_bytes = true; break ;
+      case 't': G.short_addr = true; break ;
       default: PrintUsage(argv[0]); return 1;
     }
   }
