@@ -249,9 +249,9 @@ void RefreshCounters() {
   }
 }
 
+static uint8_t repeat_counter = 0;
+static uint16_t delay_counter = 0;
 void HandleInput() {
-  static char repeat_counter = 0;
-  static char delay_counter = 0;
 
   // Slow down key repeat rate for fuck's sake
   repeat_counter++;
@@ -272,7 +272,7 @@ void HandleInput() {
     delay_counter = 0;
   }
 
-  if (delay_counter != 1 && delay_counter < 12) return;
+  if (delay_counter != 0 && delay_counter != 1 && delay_counter < 12) return;
 
   switch (key) {
 
