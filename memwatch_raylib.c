@@ -149,7 +149,7 @@ void DrawHeader() {
 
   // Hex offsets
   char hex[4];
-  pos.x = G.chr_w * 9 + 2;
+  pos.x = G.chr_w * 9;
   for (uint col = 0; col < G.columns; col++) {
     sprintf(hex, "%02X", col);
     DrawTextEx(G.font, hex, pos, G.font.baseSize, 0, _GOLD);
@@ -185,7 +185,7 @@ void DrawHex() {
   Color color;
   for (size_t i = 0; i < G.size; i++) {
     if (i % G.columns == 0) {
-      pos.x = G.chr_w * 9 + 2;
+      pos.x = G.chr_w * 9;
       pos.y += G.chr_h;
     }
     sprintf(byte, "%02X", G.buffer[i]);
