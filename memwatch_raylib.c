@@ -23,6 +23,7 @@ Color _BCYAN = { 0x34, 0xe2, 0xe2, 0xff };
 Color _CYAN  = { 0x06, 0x98, 0x9a, 0xff };
 
 #define FADE_TIME 0x30
+#define REST_TIME 0x60
 #define SPACING 4
 #define MYCHARS "0123456789+- _/.,:@#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ│·"
 
@@ -31,14 +32,15 @@ enum {INCR, INCS, DECR, DECS};
 
 
 struct Counter {
-  unsigned int untouched : 1;
-  unsigned int counter : 6;
+  bool untouched;
   uint8_t direction;
+  uint8_t counter;
+  uint16_t r_counter;  // Resets untouched state
 };
 
 
 volatile struct Counter INIT_COUNT = {
-  .untouched = 1,
+  .untouched = true,
   .direction = DECR,
   .counter = FADE_TIME,
   .r_counter = REST_TIME,
@@ -55,6 +57,7 @@ volatile struct {
   size_t height;
   bool layout_changed;
   bool running;
+  bool keep_bytes;
   Font font;
 
   // Font metrics
@@ -72,6 +75,7 @@ volatile struct {
 
 } G = {
     .running = true,
+    .keep_bytes = false,
     .columns = 16,
     .size = 0x100,
     .buffer   = NULL,
@@ -120,13 +124,14 @@ void AllocateBuffers() {
 
 
 void PrintUsage(const char *progname) {
-    printf("Usage: %s [-f <font.ttf>] [-l <font_size>] -p <PID> -a <addr> [-d <disp_addr>]\n", progname);
+    printf("Usage: %s [-f <font.ttf>] [-l <font_size>] -p <PID> -a <addr> [-d <disp_addr>] [-k]\n", progname);
     puts("  -f <font_file>   Path to font file (defaults to ./font.ttf)");
     puts("  -l <font_size>   Font size in pixels (default: 8)");
     puts("  -p <PID>         PID to read from");
     puts("  -s <size>        Initial buffer size (default: 0x100)");
     puts("  -a <addr>        Memory location (hex or dec)");
     puts("  -d <d_addr>      Displayed address (hex or dec)");
+    puts("  -k               Don't reset colored bytes");
 }
 
 
@@ -226,13 +231,20 @@ void RefreshCounters() {
     if (!G.counters[i].untouched && G.counters[i].counter)
       G.counters[i].counter--;
 
+    if (!G.counters[i].r_counter)
+      G.counters[i].untouched = true;
+
+    if (!G.counters[i].untouched && G.counters[i].r_counter && !G.keep_bytes)
+      G.counters[i].r_counter--;
+
     if (G.buffer[i] != G.prev[i]) {
-      G.counters[i].untouched = 0;
+      G.counters[i].untouched = false;
       G.counters[i].direction =
         G.buffer[i] > G.prev[i]
           ? (G.buffer[i] - G.prev[i] == 1) ? INCR : INCS
           : (G.prev[i] - G.buffer[i] == 1) ? DECR : DECS;
       G.counters[i].counter = FADE_TIME;
+      G.counters[i].r_counter = REST_TIME;
     }
   }
 }
@@ -390,7 +402,7 @@ int main(int argc, char *argv[]) {
   bool d_addr_set = false;  // Guard to safely detext 0x00 as explicitly set d_addr
   char opt;
 
-  while ((opt = getopt(argc, argv, "f:l:p:s:a:d:")) != -1) {
+  while ((opt = getopt(argc, argv, "f:l:p:s:a:d:k")) != -1) {
     switch (opt) {
       case 'f': font_file = optarg; break;
       case 'l': font_size = atoi(optarg); break;
@@ -401,6 +413,7 @@ int main(int argc, char *argv[]) {
         G.d_addr = strtoul(optarg, NULL, 0);
         d_addr_set = true;
         break;
+      case 'k': G.keep_bytes = true; break ;
       default: PrintUsage(argv[0]); return 1;
     }
   }
