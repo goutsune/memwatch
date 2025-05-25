@@ -23,7 +23,7 @@ Color _BCYAN = { 0x57, 0xc9, 0xa0, 0xff };
 Color _CYAN  = { 0x00, 0x8f, 0x79, 0xff };
 
 #define FADE_TIME 0x30
-#define REST_TIME 0x60
+#define REST_TIME 0x100
 #define SPACING 4
 #define MYCHARS "0123456789+- _/.,:@#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ│·"
 
