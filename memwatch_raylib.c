@@ -179,7 +179,7 @@ void DrawAddr() {
 
 void DrawHex() {
   // Start at column 9, second line
-  Vector2 pos;
+  Vector2 pos = {.x = 0, .y = 0};  // We increment on entering loop, hence 0
 
   char byte[4];
   Color color;
