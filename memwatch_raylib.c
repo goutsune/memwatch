@@ -44,8 +44,8 @@ volatile struct {
   // Window drawing related
   size_t width;
   size_t height;
-  char layout_changed;
-  char running;
+  bool layout_changed;
+  bool running;
   Font font;
 
   // Font metrics
@@ -62,7 +62,7 @@ volatile struct {
   struct Counter *counters;
 
 } G = {
-    .running = 1,
+    .running = true,
     .columns = 16,
     .size = 0x100,
     .buffer   = NULL,
@@ -247,7 +247,7 @@ void HandleInput() {
   switch (key) {
 
   case KEY_Q: // Exit
-    G.running = 0;
+    G.running = false;
     break;
 
   case KEY_SPACE: // Clear diff mask
@@ -269,12 +269,12 @@ void HandleInput() {
 
   case KEY_LEFT_BRACKET: // Remove column
     if (G.columns > 2) G.columns--;
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_RIGHT_BRACKET: // Add column
     G.columns++;
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_COMMA: // Shrink buffer
@@ -282,7 +282,7 @@ void HandleInput() {
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_PERIOD: // Grow buffer
@@ -290,7 +290,7 @@ void HandleInput() {
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_MINUS: // Shrink buffer by row
@@ -298,7 +298,7 @@ void HandleInput() {
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_EQUAL: // Grow buffer by row
@@ -306,7 +306,7 @@ void HandleInput() {
     AllocateBuffers();
     ReadMemory(G.buffer);
     UpdateBuffers();
-    G.layout_changed = 1;
+    G.layout_changed = true;
     break;
 
   case KEY_UP:
@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
   // Commandline setup fluff
   char *font_file = "./font.ttf";
   int font_size = 8;
-  char d_addr_set = 0;  // Guard to safely detext 0x00 as explicitly set d_addr
+  bool d_addr_set = false;  // Guard to safely detext 0x00 as explicitly set d_addr
   char opt;
 
   while ((opt = getopt(argc, argv, "f:l:p:s:a:d:")) != -1) {
@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
       case 'a': G.addr    = strtoul(optarg, NULL, 0); break;
       case 'd':
         G.d_addr = strtoul(optarg, NULL, 0);
-        d_addr_set = 1;
+        d_addr_set = true;
         break;
       default: PrintUsage(argv[0]); return 1;
     }
@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
     RefreshCounters();
 
     if (G.layout_changed) {
-      G.layout_changed = 0;
+      G.layout_changed = false;
       SetupWindow();
     }
   }
