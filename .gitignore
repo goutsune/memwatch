@@ -1,2 +1,4 @@
 *.o
+/raylib_hdrs
+/memwatch_raylib
 /memwatch
